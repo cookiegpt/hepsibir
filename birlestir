@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HepsiJet Excel Birleştirici</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --accent: #ff6b35;
+    --accent2: #ffd166;
+    --text: #f0f0f0;
+    --muted: #6b6b80;
+    --success: #06d6a0;
+    --error: #ef233c;
+    --border: #2a2a38;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -20%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(255,107,53,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -30%;
+    right: -10%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(255,209,102,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 760px;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    margin-bottom: 48px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .logo-tag {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(255,107,53,0.1);
+    border: 1px solid rgba(255,107,53,0.3);
+    padding: 4px 10px;
+    border-radius: 4px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-size: clamp(32px, 6vw, 52px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1px;
+  }
+
+  h1 span {
+    color: var(--accent);
+  }
+
+  .subtitle {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 15px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 400;
+  }
+
+  /* SETTINGS PANEL */
+  .settings-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.6s ease 0.1s both;
+  }
+
+  .settings-panel h2 {
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 20px;
+  }
+
+  .field-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media(max-width: 600px) { .field-group { grid-template-columns: 1fr; } }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .field.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  input[type="text"], input[type="number"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus, input[type="number"]:focus {
+    border-color: var(--accent);
+  }
+
+  .field-hint {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* DROP ZONE */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 56px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--surface);
+    animation: fadeUp 0.6s ease 0.2s both;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .drop-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,107,53,0.05), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .drop-zone:hover::before, .drop-zone.dragover::before { opacity: 1; }
+
+  .drop-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .drop-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .drop-sub {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .drop-sub strong {
+    color: var(--accent2);
+  }
+
+  #fileInput { display: none; }
+
+  /* FILE LIST */
+  .file-list {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .file-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease both;
+  }
+
+  .file-item .file-icon { font-size: 20px; }
+
+  .file-item .file-name {
+    flex: 1;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .file-item .file-size {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .file-item .remove-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 4px;
+    transition: color 0.2s;
+    line-height: 1;
+  }
+
+  .file-item .remove-btn:hover { color: var(--error); }
+
+  /* RUN BUTTON */
+  .run-btn {
+    width: 100%;
+    margin-top: 24px;
+    padding: 18px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    animation: fadeUp 0.6s ease 0.3s both;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .run-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .run-btn:hover:not(:disabled)::after { opacity: 1; }
+  .run-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,107,53,0.35); }
+  .run-btn:active:not(:disabled) { transform: translateY(0); }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* LOG */
+  .log-panel {
+    margin-top: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    display: none;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .log-panel h3 {
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .log-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .log-entry {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    display: flex;
+    gap: 10px;
+    animation: slideIn 0.2s ease both;
+  }
+
+  .log-entry .log-icon { flex-shrink: 0; }
+  .log-entry.info .log-text { color: var(--text); }
+  .log-entry.success .log-text { color: var(--success); }
+  .log-entry.error .log-text { color: var(--error); }
+  .log-entry.warn .log-text { color: var(--accent2); }
+
+  /* RESULT */
+  .result-box {
+    margin-top: 20px;
+    background: rgba(6, 214, 160, 0.08);
+    border: 1px solid rgba(6, 214, 160, 0.3);
+    border-radius: 12px;
+    padding: 20px 24px;
+    display: none;
+  }
+
+  .result-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-val {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--success);
+  }
+
+  .stat-label {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--success);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+
+  .download-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(6,214,160,0.3); }
+
+  /* PROGRESS */
+  .progress-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    display: none;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 2px;
+  }
+
+  /* ANIMATIONS */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .spinning { display: inline-block; animation: spin 1s linear infinite; }
+
+  footer {
+    margin-top: 48px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    text-align: center;
+    animation: fadeUp 0.6s ease 0.5s both;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo-tag">▶ Excel Araçları</div>
+    <h1>HepsiJet<br><span>Birleştirici</span></h1>
+    <p class="subtitle">// Çoklu dosya → Gruplama → Tek Excel çıktısı</p>
+  </header>
+
+  <!-- AYARLAR -->
+  <div class="settings-panel">
+    <h2>⚙ Ayarlar</h2>
+    <div class="field-group">
+      <div class="field">
+        <label>Gruplama Kolonu</label>
+        <input type="text" id="groupCol" value="Teslimat Kodu" />
+        <span class="field-hint">Hangi kolona göre gruplandırılsın?</span>
+      </div>
+      <div class="field">
+        <label>Sheet İndeksi</label>
+        <input type="number" id="sheetIndex" value="1" min="0" />
+        <span class="field-hint">0 = 1. sheet, 1 = 2. sheet</span>
+      </div>
+      <div class="field full">
+        <label>Toplanacak Kolonlar (virgülle ayır)</label>
+        <input type="text" id="sumCols" value="Desi,Gönderi Maliyeti,BTK Payı,Toplam Tutar,KDV Payı,KDV Dahil Toplam Tutar" />
+        <span class="field-hint">Bu kolonlardaki değerler gruplandırma sonrası toplanır ve yuvarlanır</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DROP ZONE -->
+  <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <span class="drop-icon">📂</span>
+    <div class="drop-title">Dosyaları buraya sürükle veya tıkla</div>
+    <div class="drop-sub">
+      <strong>.xlsx / .xls / .csv</strong> formatları desteklenir<br>
+      (Birden fazla dosya seçebilirsin)
+    </div>
+    <input type="file" id="fileInput" multiple accept=".xlsx,.xls,.csv" />
+  </div>
+
+  <!-- FILE LIST -->
+  <div class="file-list" id="fileList"></div>
+
+  <!-- RUN BUTTON -->
+  <button class="run-btn" id="runBtn" disabled onclick="runProcess()">
+    Birleştir &amp; İndir
+  </button>
+
+  <!-- LOG PANEL -->
+  <div class="log-panel" id="logPanel">
+    <h3>📋 İşlem Günlüğü</h3>
+    <div class="progress-bar" id="progressBar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="log-entries" id="logEntries"></div>
+  </div>
+
+  <!-- RESULT BOX -->
+  <div class="result-box" id="resultBox">
+    <div class="result-stats" id="resultStats"></div>
+    <a class="download-btn" id="downloadLink" href="#">⬇ Excel Dosyasını İndir</a>
+  </div>
+
+  <footer>Tarayıcıda çalışır — hiçbir veri sunucuya gönderilmez</footer>
+</div>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+const dropZone = document.getElementById('dropZone');
+const fileListEl = document.getElementById('fileList');
+const runBtn = document.getElementById('runBtn');
+const logPanel = document.getElementById('logPanel');
+const logEntries = document.getElementById('logEntries');
+const resultBox = document.getElementById('resultBox');
+const resultStats = document.getElementById('resultStats');
+const downloadLink = document.getElementById('downloadLink');
+const progressBar = document.getElementById('progressBar');
+const progressFill = document.getElementById('progressFill');
+
+let selectedFiles = [];
+
+// Drag & Drop
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  handleFiles([...e.dataTransfer.files]);
+});
+
+fileInput.addEventListener('change', () => handleFiles([...fileInput.files]));
+
+function handleFiles(files) {
+  const valid = files.filter(f => /\.(xlsx|xls|csv)$/i.test(f.name));
+  if (!valid.length) { logMsg('error', '❌', 'Geçerli dosya bulunamadı (.xlsx, .xls, .csv)'); return; }
+  selectedFiles = [...selectedFiles, ...valid];
+  renderFileList();
+}
+
+function renderFileList() {
+  fileListEl.innerHTML = '';
+  selectedFiles.forEach((file, i) => {
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    item.innerHTML = `
+      <span class="file-icon">${/\.csv$/i.test(file.name) ? '📄' : '📊'}</span>
+      <span class="file-name">${file.name}</span>
+      <span class="file-size">${(file.size / 1024).toFixed(1)} KB</span>
+      <button class="remove-btn" onclick="removeFile(${i})">✕</button>
+    `;
+    fileListEl.appendChild(item);
+  });
+  runBtn.disabled = selectedFiles.length === 0;
+}
+
+function removeFile(index) {
+  selectedFiles.splice(index, 1);
+  renderFileList();
+}
+
+function logMsg(type, icon, text) {
+  logPanel.style.display = 'block';
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  entry.innerHTML = `<span class="log-icon">${icon}</span><span class="log-text">${text}</span>`;
+  logEntries.appendChild(entry);
+  logEntries.scrollTop = logEntries.scrollHeight;
+}
+
+function setProgress(pct) {
+  progressBar.style.display = 'block';
+  progressFill.style.width = pct + '%';
+}
+
+function cleanCurrency(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  if (typeof val === 'number') return val;
+  let s = String(val).replace(/TL|₺/g, '').trim();
+  if (s.includes('.') && s.includes(',')) s = s.replace(/\./g, '');
+  s = s.replace(',', '.');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+async function readFile(file, sheetIdx) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        let rows;
+        if (/\.csv$/i.test(file.name)) {
+          const wb = XLSX.read(e.target.result, { type: 'string', raw: false });
+          const ws = wb.Sheets[wb.SheetNames[sheetIdx] || wb.SheetNames[0]];
+          rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        } else {
+          const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+          const sheetName = wb.SheetNames[sheetIdx] !== undefined ? wb.SheetNames[sheetIdx] : wb.SheetNames[0];
+          const ws = wb.Sheets[sheetName];
+          rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        }
+        resolve(rows);
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = reject;
+    if (/\.csv$/i.test(file.name)) reader.readAsText(file, 'UTF-8');
+    else reader.readAsArrayBuffer(file);
+  });
+}
+
+async function runProcess() {
+  logEntries.innerHTML = '';
+  resultBox.style.display = 'none';
+  logPanel.style.display = 'block';
+  progressFill.style.width = '0%';
+  runBtn.disabled = true;
+  runBtn.innerHTML = '<span class="spinning">⟳</span> İşleniyor...';
+
+  const groupCol = document.getElementById('groupCol').value.trim();
+  const sheetIdx = parseInt(document.getElementById('sheetIndex').value) || 0;
+  const sumColsRaw = document.getElementById('sumCols').value.trim();
+  const sumCols = sumColsRaw.split(',').map(s => s.trim()).filter(Boolean);
+
+  logMsg('info', '📂', `${selectedFiles.length} dosya okunuyor...`);
+  setProgress(5);
+
+  let allRows = [];
+  let colOrder = null;
+
+  for (let i = 0; i < selectedFiles.length; i++) {
+    const file = selectedFiles[i];
+    try {
+      const rows = await readFile(file, sheetIdx);
+      if (rows.length > 0) {
+        if (!colOrder) colOrder = Object.keys(rows[0]);
+        allRows = allRows.concat(rows);
+        logMsg('success', '✅', `${file.name} — ${rows.length} satır`);
+      } else {
+        logMsg('warn', '⚠️', `${file.name} — boş veya uyumsuz sheet`);
+      }
+    } catch(err) {
+      logMsg('error', '❌', `${file.name} — Hata: ${err.message}`);
+    }
+    setProgress(5 + ((i + 1) / selectedFiles.length) * 45);
+  }
+
+  if (!allRows.length) {
+    logMsg('error', '❌', 'Hiç veri okunamadı!');
+    runBtn.disabled = false;
+    runBtn.innerHTML = 'Birleştir & İndir';
+    return;
+  }
+
+  logMsg('info', '📦', `Toplam ${allRows.length} satır birleştirildi.`);
+  setProgress(55);
+
+  const rawCount = allRows.length;
+
+  if (!colOrder || !colOrder.includes(groupCol)) {
+    logMsg('warn', '⚠️', `"${groupCol}" kolonu bulunamadı — gruplama atlandı, ham veri kaydediliyor.`);
+    setProgress(90);
+  } else {
+    logMsg('info', '🔄', `"${groupCol}" bazında gruplama yapılıyor...`);
+
+    // Gruplama
+    const groups = {};
+    const groupOrder = [];
+    for (const row of allRows) {
+      const key = String(row[groupCol] ?? '');
+      if (!groups[key]) { groups[key] = { ...row }; groupOrder.push(key); }
+      else {
+        // sum cols
+        for (const col of sumCols) {
+          if (col in row) {
+            groups[key][col] = (cleanCurrency(groups[key][col]) + cleanCurrency(row[col]));
+          }
+        }
+      }
+    }
+
+    setProgress(75);
+    logMsg('info', '✂️', 'Tutarlar 2 haneye yuvarlanıyor...');
+
+    // Rounding + column order
+    allRows = groupOrder.map(key => {
+      const r = groups[key];
+      for (const col of sumCols) {
+        if (col in r) r[col] = Math.round(cleanCurrency(r[col]) * 100) / 100;
+      }
+      // restore col order
+      const ordered = {};
+      for (const c of colOrder) { if (c in r) ordered[c] = r[c]; }
+      return ordered;
+    });
+
+    setProgress(85);
+    logMsg('success', '✅', `${rawCount} satır → ${allRows.length} özet satır`);
+  }
+
+  // Excel oluştur
+  logMsg('info', '💾', 'Excel dosyası oluşturuluyor...');
+  setProgress(92);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(allRows, { header: colOrder });
+  XLSX.utils.book_append_sheet(wb, ws, 'Sonuç');
+  const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([wbOut], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+
+  setProgress(100);
+  logMsg('success', '🎉', 'İşlem tamamlandı!');
+
+  // Result box
+  resultStats.innerHTML = `
+    <div class="stat"><div class="stat-val">${selectedFiles.length}</div><div class="stat-label">Dosya</div></div>
+    <div class="stat"><div class="stat-val">${rawCount.toLocaleString('tr')}</div><div class="stat-label">Ham Satır</div></div>
+    <div class="stat"><div class="stat-val">${allRows.length.toLocaleString('tr')}</div><div class="stat-label">Özet Satır</div></div>
+  `;
+  downloadLink.href = url;
+  downloadLink.download = 'Hepsijethepsi_GenelToplam.xlsx';
+  resultBox.style.display = 'block';
+
+  runBtn.disabled = false;
+  runBtn.innerHTML = 'Birleştir &amp; İndir';
+}
+</script>
+</body>
+</html>
