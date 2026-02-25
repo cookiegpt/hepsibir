@@ -470,28 +470,6 @@
     <p class="subtitle">// Çoklu dosya → Gruplama → Tek Excel çıktısı</p>
   </header>
 
-  <!-- AYARLAR -->
-  <div class="settings-panel">
-    <h2>⚙ Ayarlar</h2>
-    <div class="field-group">
-      <div class="field">
-        <label>Gruplama Kolonu</label>
-        <input type="text" id="groupCol" value="Teslimat Kodu" />
-        <span class="field-hint">Hangi kolona göre gruplandırılsın?</span>
-      </div>
-      <div class="field">
-        <label>Sheet İndeksi</label>
-        <input type="number" id="sheetIndex" value="1" min="0" />
-        <span class="field-hint">0 = 1. sheet, 1 = 2. sheet</span>
-      </div>
-      <div class="field full">
-        <label>Toplanacak Kolonlar (virgülle ayır)</label>
-        <input type="text" id="sumCols" value="Desi,Gönderi Maliyeti,BTK Payı,Toplam Tutar,KDV Payı,KDV Dahil Toplam Tutar" />
-        <span class="field-hint">Bu kolonlardaki değerler gruplandırma sonrası toplanır ve yuvarlanır</span>
-      </div>
-    </div>
-  </div>
-
   <!-- DROP ZONE -->
   <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
     <span class="drop-icon">📂</span>
